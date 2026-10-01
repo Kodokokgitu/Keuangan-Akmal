@@ -146,7 +146,7 @@
     <div class="form-group" id="newWalletGroup" style="display:none;">
       <label>New Wallet Name</label>
       <div style="display:flex; gap:6px;">
-        <input type="text" id="newWalletInput" placeholder="e.g. OVO, GoPay, Mandiri">
+        <input type="text" id="newWalletInput" placeholder="e.g. GoPay, Cash, Mandiri">
         <button class="btn btn-primary" onclick="addCustomWallet()">Add</button>
       </div>
     </div>
@@ -197,7 +197,7 @@ let entries = [];
 let pieChartInstance = null;
 let barChartInstance = null;
 
-const defaultWallets = ['BCA', 'Cash', 'DANA'];
+const defaultWallets = ['Bank BCA', 'DANA', 'ShopeePay', 'Cash'];
 const defaultCats = {
   expense: ['Food', 'Transport', 'Bills', 'Shopping', 'Health', 'Other'],
   income: ['Salary', 'Freelance', 'Gift', 'Other']
@@ -351,7 +351,7 @@ function renderDashboard() {
   [...defaultWallets, ...getCustomWallets()].forEach(w => walletBalances[w] = 0);
 
   entries.forEach(e => {
-    const w = e.wallet || 'Cash';
+    const w = e.wallet || 'Bank BCA';
     const amt = Number(e.amount) || 0;
     if (!walletBalances[w]) walletBalances[w] = 0;
     if (e.type === 'income') walletBalances[w] += amt;
@@ -379,7 +379,7 @@ function renderDashboard() {
       <li>
         <div>
           <strong>${e.category}</strong>
-          <span class="badge">${e.wallet || 'Cash'}</span>
+          <span class="badge">${e.wallet || 'Bank BCA'}</span>
           <div style="font-size:0.75rem; color:var(--muted);">${e.date} ${e.note ? '· ' + e.note : ''}</div>
         </div>
         <div style="display:flex; align-items:center; gap:8px;">
