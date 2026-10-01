@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>My Spending & Income Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<!-- Load Chart.js CDN -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
   :root {
@@ -215,6 +214,7 @@
 <script>
 let currentType = 'expense';
 let entries = [];
+let walletBalancesServer = {};
 let pieChartInstance = null;
 let barChartInstance = null;
 
@@ -288,7 +288,6 @@ function renderWallets() {
   document.getElementById('txFromWallet').innerHTML = optionsHtml;
   document.getElementById('txToWallet').innerHTML = optionsHtml;
   
-  // Default to different wallets for transfer
   if (all.length > 1) {
     document.getElementById('txFromWallet').value = all[0];
     document.getElementById('txToWallet').value = all[1];
@@ -359,6 +358,7 @@ async function fetchEntries() {
   try {
     const res = await api();
     entries = res.entries || [];
+    walletBalancesServer = res.wallets || {};
     msg.textContent = '';
     renderDashboard();
   } catch (err) {
@@ -387,33 +387,19 @@ function renderDashboard() {
   document.getElementById('totOut').textContent = idr(out);
   document.getElementById('totNet').textContent = idr(inc - out);
 
-  // Wallet Balances (All time calculation)
-  const walletBalances = {};
-  [...defaultWallets, ...getCustomWallets()].forEach(w => walletBalances[w] = 0);
-
-  entries.forEach(e => {
-    const amt = Number(e.amount) || 0;
-    if (e.type === 'income') {
-      const w = e.wallet || 'Bank BCA';
-      walletBalances[w] = (walletBalances[w] || 0) + amt;
-    } else if (e.type === 'expense') {
-      const w = e.wallet || 'Bank BCA';
-      walletBalances[w] = (walletBalances[w] || 0) - amt;
-    } else if (e.type === 'transfer') {
-      const fromW = e.fromWallet || e.wallet;
-      const toW = e.toWallet;
-      if (fromW) walletBalances[fromW] = (walletBalances[fromW] || 0) - amt;
-      if (toW) walletBalances[toW] = (walletBalances[toW] || 0) + amt;
-    }
-  });
-
+  // Render Wallet Balances from Server Data
+  const allWallets = [...new Set([...defaultWallets, ...getCustomWallets(), ...Object.keys(walletBalancesServer)])];
   const walletSummaryEl = document.getElementById('walletSummary');
-  walletSummaryEl.innerHTML = Object.entries(walletBalances).map(([w, bal]) => `
-    <div class="wallet-card">
-      <div class="wallet-name">${w}</div>
-      <div class="wallet-bal ${bal < 0 ? 'exp' : ''}">${idr(bal)}</div>
-    </div>
-  `).join('');
+  
+  walletSummaryEl.innerHTML = allWallets.map(w => {
+    const bal = walletBalancesServer[w] || 0;
+    return `
+      <div class="wallet-card">
+        <div class="wallet-name">${w}</div>
+        <div class="wallet-bal ${bal < 0 ? 'exp' : ''}">${idr(bal)}</div>
+      </div>
+    `;
+  }).join('');
 
   // Render Charts
   renderPieChart(catTotals);
@@ -567,10 +553,9 @@ async function saveEntry() {
   const btn = document.getElementById('btnSave');
   btn.disabled = true;
   try {
-    const res = await api(payload);
-    entries.push({ ...payload, id: res.id });
+    await api(payload);
     closeModal('addModal');
-    renderDashboard();
+    fetchEntries();
   } catch(err) {
     alert(err.message);
   }
@@ -581,8 +566,7 @@ async function deleteEntry(id) {
   if (!confirm('Delete this entry?')) return;
   try {
     await api({ action: 'delete', id });
-    entries = entries.filter(e => String(e.id) !== String(id));
-    renderDashboard();
+    fetchEntries();
   } catch(err) {
     alert(err.message);
   }
